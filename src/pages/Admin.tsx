@@ -291,7 +291,7 @@ export default function Admin() {
   const submitGroupMessage = async () => {
     if (!groupMsgTarget || !groupMsgBody) return;
     try {
-      const group = groups.find(g => g.id === groupMsgTarget);
+      const group = groups.find(g => String(g.id) === String(groupMsgTarget));
       const ann = await api.post("/api/announcements", { title: `Message to ${group?.name ?? "Group"}`, body: groupMsgBody, type: "group-message", targetGroupId: groupMsgTarget });
       setAnnouncements(prev => [ann, ...prev]);
       setGroupMsgBody(""); setGroupMsgTarget(""); setShowGroupMsg(false);

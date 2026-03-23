@@ -174,7 +174,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshGroups = useCallback(async () => {
-    try { setGroups(await api.get("/api/groups")); } catch {}
+    try {
+      const raw = await api.get("/api/groups");
+      setGroups(raw.map((g: Group) => ({ ...g, id: String(g.id) })));
+    } catch {}
   }, []);
 
   const refreshNotifications = useCallback(async () => {
@@ -228,7 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ]);
         setMaintenanceMode(maintData.enabled);
         if (meData.user) setCurrentUserState(meData.user);
-        setGroups(grpData);
+        setGroups(grpData.map((g: Group) => ({ ...g, id: String(g.id) })));
         setAnnouncements(annData);
         setContactInfo(contactData);
         setLeaderboard(lbData.map((u: { id: string; username: string; firstName: string; lastName: string; totalPaid: number; isVip: boolean }) => ({
