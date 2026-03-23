@@ -109,6 +109,7 @@ export default function GroupDetail() {
       <div className="text-gold text-lg font-cinzel animate-pulse">Loading...</div>
     </div>
   );
+  if (!isLoggedIn) return <Navigate to="/login" state={{ from: `/groups/${id}`, message: "Please sign in to view this savings group." }} replace />;
   if (!group) return <Navigate to="/groups" replace />;
 
   const pad = (n: number) => n.toString().padStart(2, "0");

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { api } from "@/lib/api";
@@ -39,6 +39,9 @@ export default function Login() {
   const [loading, setLoading]       = useState(false);
   const { setCurrentUser } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string })?.from;
+  const redirectMessage = (location.state as { message?: string })?.message;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +54,7 @@ export default function Login() {
       if (data.user.role === "admin" || data.user.role === "moderator") {
         navigate("/admin");
       } else {
-        navigate("/dashboard");
+        navigate(from || "/dashboard");
       }
     } catch (err: unknown) {
       const e = err as Error & { code?: string };
@@ -103,6 +106,13 @@ export default function Login() {
             </h2>
             <p className="text-muted-foreground text-xs mt-3 tracking-widest uppercase">Sign in to your account</p>
           </div>
+
+          {redirectMessage && (
+            <div className="mb-4 py-2.5 px-3 rounded-lg border text-xs text-center"
+              style={{ background: "rgba(234,179,8,0.08)", borderColor: "rgba(234,179,8,0.3)", color: "hsl(45,93%,70%)" }}>
+              🔒 {redirectMessage}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
