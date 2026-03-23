@@ -270,12 +270,12 @@ app.patch("/api/users/bank", authRequired, async (req, res) => {
 // GET /api/users/notifications
 app.get("/api/users/notifications", authRequired, async (req, res) => {
   const { rows } = await db(`SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`, [req.session.userId]);
-  res.json(rows.map(n => ({ id: n.id, userId: n.user_id, message: n.message, read: n.read, createdAt: n.created_at })));
+  res.json(rows.map(n => ({ id: n.id, userId: n.user_id, message: n.message, read: n.is_read, createdAt: n.created_at })));
 });
 
 // POST /api/users/notifications/read
 app.post("/api/users/notifications/read", authRequired, async (req, res) => {
-  await db(`UPDATE notifications SET read = true WHERE user_id = $1`, [req.session.userId]);
+  await db(`UPDATE notifications SET is_read = true WHERE user_id = $1`, [req.session.userId]);
   await db(`UPDATE users SET unread_notifications = 0 WHERE id = $1`, [req.session.userId]);
   res.json({ success: true });
 });
@@ -922,15 +922,15 @@ app.get("/api/users/history", authRequired, async (req, res) => {
     db(`SELECT p.id, p.code, p.amount, p.status, p.date, p.created_at, g.name as group_name, p.seat_no
         FROM payments p LEFT JOIN groups g ON p.group_id = g.id
         WHERE p.user_id = $1 ORDER BY p.created_at DESC LIMIT 50`, [userId]),
-    db(`SELECT s.seat_no, s.created_at, g.name as group_name, g.id as group_id
+    db(`SELECT s.seat_no, s.joined_at as created_at, g.name as group_name, g.id as group_id
         FROM slots s JOIN groups g ON s.group_id = g.id
-        WHERE s.user_id = $1 ORDER BY s.created_at DESC LIMIT 30`, [userId]),
-    db(`SELECT id, message, read, created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30`, [userId]),
+        WHERE s.user_id = $1 ORDER BY s.joined_at DESC LIMIT 30`, [userId]),
+    db(`SELECT id, message, is_read, created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30`, [userId]),
   ]);
   const history = [
-    ...payments.rows.map(p => ({ id: `pay-${p.id}`, type: 'payment', title: `Payment ${p.code}`, description: `₦${Number(p.amount).toLocaleString()} for ${p.group_name} — Seat #${p.seat_no || '?'}`, status: p.status, createdAt: p.created_at })),
+    ...payments.rows.map(p => ({ id: `pay-${p.id}`, type: 'payment', title: `Payment ${p.code || 'PAY'}`, description: `₦${Number(p.amount).toLocaleString()} for ${p.group_name || 'Group'} — Seat #${p.seat_no || '?'}`, status: p.status, createdAt: p.created_at })),
     ...slots.rows.map(s => ({ id: `slot-${s.group_id}-${s.seat_no}`, type: 'join', title: `Joined ${s.group_name}`, description: `Seat #${s.seat_no} in ${s.group_name}`, status: 'info', createdAt: s.created_at })),
-    ...notifs.rows.map(n => ({ id: `notif-${n.id}`, type: 'notification', title: 'Notification', description: n.message, status: n.read ? 'read' : 'unread', createdAt: n.created_at })),
+    ...notifs.rows.map(n => ({ id: `notif-${n.id}`, type: 'notification', title: 'Notification', description: n.message, status: n.is_read ? 'read' : 'unread', createdAt: n.created_at })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 80);
   res.json(history);
 });
@@ -942,15 +942,15 @@ app.get("/api/admin/users/:id/history", adminRequired, async (req, res) => {
     db(`SELECT p.id, p.code, p.amount, p.status, p.date, p.created_at, g.name as group_name, p.seat_no
         FROM payments p LEFT JOIN groups g ON p.group_id = g.id
         WHERE p.user_id = $1 ORDER BY p.created_at DESC LIMIT 50`, [userId]),
-    db(`SELECT s.seat_no, s.created_at, g.name as group_name, g.id as group_id
+    db(`SELECT s.seat_no, s.joined_at as created_at, g.name as group_name, g.id as group_id
         FROM slots s JOIN groups g ON s.group_id = g.id
-        WHERE s.user_id = $1 ORDER BY s.created_at DESC LIMIT 30`, [userId]),
-    db(`SELECT id, message, read, created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30`, [userId]),
+        WHERE s.user_id = $1 ORDER BY s.joined_at DESC LIMIT 30`, [userId]),
+    db(`SELECT id, message, is_read, created_at FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30`, [userId]),
   ]);
   const history = [
-    ...payments.rows.map(p => ({ id: `pay-${p.id}`, type: 'payment', title: `Payment ${p.code}`, description: `₦${Number(p.amount).toLocaleString()} for ${p.group_name} — Seat #${p.seat_no || '?'}`, status: p.status, createdAt: p.created_at })),
+    ...payments.rows.map(p => ({ id: `pay-${p.id}`, type: 'payment', title: `Payment ${p.code || 'PAY'}`, description: `₦${Number(p.amount).toLocaleString()} for ${p.group_name || 'Group'} — Seat #${p.seat_no || '?'}`, status: p.status, createdAt: p.created_at })),
     ...slots.rows.map(s => ({ id: `slot-${s.group_id}-${s.seat_no}`, type: 'join', title: `Joined ${s.group_name}`, description: `Seat #${s.seat_no} in ${s.group_name}`, status: 'info', createdAt: s.created_at })),
-    ...notifs.rows.map(n => ({ id: `notif-${n.id}`, type: 'notification', title: 'Notification', description: n.message, status: n.read ? 'read' : 'unread', createdAt: n.created_at })),
+    ...notifs.rows.map(n => ({ id: `notif-${n.id}`, type: 'notification', title: 'Notification', description: n.message, status: n.is_read ? 'read' : 'unread', createdAt: n.created_at })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 80);
   res.json(history);
 });
